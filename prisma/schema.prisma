@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PhaseStatus {
+  PLANIRANO
+  U_TOKU
+  ZAVRSENO
+}
+
+model Phase {
+  id          Int          @id @default(autoincrement())
+  title       String       // npr. "Temelj", "Siva gradnja", "Stolarija"
+  description String?
+  orderIndex  Int          @default(0)
+  budget      Float        @default(0.0)
+  status      PhaseStatus  @default(PLANIRANO)
+  startDate   DateTime?
+  endDate     DateTime?
+  expenses    Expense[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Vendor {
+  id          Int       @id @default(autoincrement())
+  name        String    // Naziv stovarišta ili majstora
+  contact     String?   // Telefon ili email
+  category    String?   // "Materijal", "Radna snaga", "Prevoz"
+  expenses    Expense[]
+  createdAt   DateTime  @default(now())
+}
+
+model Expense {
+  id          Int      @id @default(autoincrement())
+  title       String   // npr. "Armaturna mreža Q335", "Dnevnica armirači"
+  amount      Float
+  paidDate    DateTime @default(now())
+  invoiceUrl  String?  // Link ka računu ili slici otpremnice
+  phaseId     Int
+  phase       Phase    @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+  vendorId    Int?
+  vendor      Vendor?  @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+}
