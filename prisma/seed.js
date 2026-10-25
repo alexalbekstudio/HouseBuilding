@@ -2,33 +2,82 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-const initialPhases = [
-  { title: 'Dozvole i projektovanje', orderIndex: 1, budget: 3500 },
-  { title: 'Zemljani radovi i temelj', orderIndex: 2, budget: 12000 },
-  { title: 'Zidanje prizemlja i ploča', orderIndex: 3, budget: 15000 },
-  { title: 'Krovna konstrukcija i pokrivanje', orderIndex: 4, budget: 9000 },
-  { title: 'Spoljna stolarija (prozori i vrata)', orderIndex: 5, budget: 6000 },
-  { title: 'Vodovod, kanalizacija i elektroinstalacije', orderIndex: 6, budget: 7500 },
-  { title: 'Malterisanje i košuljice', orderIndex: 7, budget: 5000 },
-  { title: 'Izolacija i fasada', orderIndex: 8, budget: 8000 },
-  { title: 'Podovi, pločice i sanitarije', orderIndex: 9, budget: 6500 },
-  { title: 'Gletovanje, krečenje i unutrašnja vrata', orderIndex: 10, budget: 4000 }
+const legalPhases = [
+  {
+    orderIndex: 1,
+    title: 'Provera parcele i identiteta',
+    subtitle: 'Katastarska parcela, vlasništvo, tereti, pristupni put.',
+    budgetPlan: 30000
+  },
+  {
+    orderIndex: 2,
+    title: 'Planska pravila',
+    subtitle: 'Namena, indeks zauzetosti i izgrađenosti, gabariti, spratnost.',
+    budgetPlan: 25000
+  },
+  {
+    orderIndex: 3,
+    title: 'Geodetski i geotehnički podaci',
+    subtitle: 'Geodetski snimak i geotehnički elaborat tla.',
+    budgetPlan: 70000
+  },
+  {
+    orderIndex: 4,
+    title: 'Idejno rešenje (IDR)',
+    subtitle: 'Idejno rešenje montažne kuće usklađeno sa parcelom.',
+    budgetPlan: 120000
+  },
+  {
+    orderIndex: 5,
+    title: 'Lokacijski uslovi',
+    subtitle: 'Urbanistički, tehnički i komunalni uslovi. Preduslov za glavni projekat.',
+    budgetPlan: 45000
+  },
+  {
+    orderIndex: 6,
+    title: 'Projekat i građevinska dozvola (PGD)',
+    subtitle: 'Glavni projekat i dobijanje građevinske dozvole.',
+    budgetPlan: 250000
+  },
+  {
+    orderIndex: 7,
+    title: 'Prijava radova i gradnja',
+    subtitle: 'Prijava radova najmanje 8 dana pre početka. Izjave posle temelja i konstrukcije.',
+    budgetPlan: 3500000
+  },
+  {
+    orderIndex: 8,
+    title: 'Tehnički pregled i upotrebna dozvola',
+    subtitle: 'Finalni pregled, upotrebna dozvola i uknjižba.',
+    budgetPlan: 80000
+  }
 ];
 
 async function main() {
-  console.log('Resetovanje i unos faza...');
-  
-  // Briše postojeće faze da nema dupliranja
-  await prisma.expense.deleteMany();
-  await prisma.phase.deleteMany();
+  console.log('Kreiranje podrazumevanog projekta i pravnih faza...');
 
-  for (const phase of initialPhases) {
+  // 1. Kreiranje primarnog projekta sa koordinatama Melenaca za mapu
+  const project = await prisma.project.create({
+    data: {
+      name: 'Montažna kuća — Melenci',
+      location: 'Melenci, Zrenjanin',
+      latitude: 45.5167,
+      longitude: 20.3167,
+      totalBudget: 4120000
+    }
+  });
+
+  // 2. Kreiranje 8 faza vezanih za ovaj projekat
+  for (const p of legalPhases) {
     await prisma.phase.create({
-      data: phase,
+      data: {
+        ...p,
+        projectId: project.id
+      }
     });
   }
 
-  console.log('Faze uspešno sinhronizovane (10 faza ukupno).');
+  console.log(`Projekat #${project.id} (${project.name}) i 8 faza uspešno upisani!`);
 }
 
 main()

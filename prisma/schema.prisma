@@ -7,44 +7,210 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum SubscriptionPlan {
+  FREE
+  BASIC
+  PRO
+}
+
+model User {
+  id                 Int                @id @default(autoincrement())
+  email              String             @unique
+  passwordHash       String
+  fullName           String?
+  role               Role               @default(USER)
+  subscriptionPlan   SubscriptionPlan   @default(FREE)
+  subscriptionStatus SubscriptionStatus @default(TRIAL)
+  subscriptionExpiresAt DateTime?
+  projects           Project[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+}
+
 enum PhaseStatus {
-  PLANIRANO
+  NIJE_POCETO
   U_TOKU
   ZAVRSENO
 }
 
-model Phase {
+enum ExpenseCategory {
+  MATERIJAL
+  RADNA_SNAGA
+  TAKSE_DOZVOLE
+  PREVOZ
+  OSTALO
+}
+
+enum PaymentMethod {
+  GOTOVINA
+  RACUN
+  KARTICA
+}
+
+enum PaymentStatus {
+  PLACENO
+  CEKA_SE
+}
+
+// Multi-tenant model: omogućava vođenje više kuća/gradilišta
+model Project {
   id          Int          @id @default(autoincrement())
-  title       String       // npr. "Temelj", "Siva gradnja", "Stolarija"
-  description String?
-  orderIndex  Int          @default(0)
-  budget      Float        @default(0.0)
-  status      PhaseStatus  @default(PLANIRANO)
-  startDate   DateTime?
-  endDate     DateTime?
+  name        String
+  location    String?
+  latitude    Float?
+  longitude   Float?
+  totalBudget Float        @default(0.0)
+  userId      Int?
+  user        User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phases      Phase[]
+  companies   Company[]
   expenses    Expense[]
+  documents   Document[]
+  materials   Material[]
+  capitals    Capital[]
+  reminders   Reminder[]
+  siteLogs    SiteLog[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 }
 
-model Vendor {
-  id          Int       @id @default(autoincrement())
-  name        String    // Naziv stovarišta ili majstora
-  contact     String?   // Telefon ili email
-  category    String?   // "Materijal", "Radna snaga", "Prevoz"
+model SiteLog {
+  id          Int      @id @default(autoincrement())
+  projectId   Int
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  date        DateTime @default(now())
+  temperature Float?
+  weatherDesc String?
+  windSpeed   Float?
+  notes       String
+  workType    String?  // npr. "Betoniranje temelja", "Montaža panela"
+  createdAt   DateTime @default(now())
+}
+
+model Phase {
+  id          Int          @id @default(autoincrement())
+  orderIndex  Int          // 1 do 8
+  title       String       // "Provera parcele i identiteta", "Planska pravila"...
+  subtitle    String?      // Opis faze
+  budgetPlan  Float        @default(0.0)
+  status      PhaseStatus  @default(NIJE_POCETO)
+  startDate   DateTime?
+  endDate     DateTime?
+  projectId   Int
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   expenses    Expense[]
-  createdAt   DateTime  @default(now())
+  documents   Document[]
+  reminders   Reminder[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Company {
+  id             Int        @id @default(autoincrement())
+  name           String
+  pib            String?
+  address        String?    // Adresa sedišta za mapu
+  factoryAddress String?    // Adresa proizvodnje
+  city           String?
+  postalCode     String?
+  contactPerson  String?
+  phone          String?
+  email          String?
+  category       String?    // Izvođač, Stovarište, Geometar, Projektant
+  note           String?
+  latitude       Float?     // Koordinate za Leaflet mapu
+  longitude      Float?
+  projectId      Int
+  project        Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  expenses       Expense[]
+  reminders      Reminder[]
+  createdAt      DateTime   @default(now())
 }
 
 model Expense {
-  id          Int      @id @default(autoincrement())
-  title       String   // npr. "Armaturna mreža Q335", "Dnevnica armirači"
+  id            Int             @id @default(autoincrement())
+  title         String          // Opis troška
+  amount        Float           // U RSD
+  category      ExpenseCategory @default(MATERIJAL)
+  paymentMethod PaymentMethod   @default(GOTOVINA)
+  status        PaymentStatus   @default(PLACENO)
+  date          DateTime        @default(now())
+  paidDate      DateTime?
+  documentNo    String?         // Broj fakture ili računa
+  note          String?
+  invoiceUrl    String?         // Putanja do fajla/slike
+  ocrRawText    String?         // Tekst izvučen preko OCR-a
+  projectId     Int
+  project       Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phaseId       Int?
+  phase         Phase?          @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+  companyId     Int?
+  company       Company?        @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  createdAt     DateTime        @default(now())
+}
+
+model Document {
+  id          Int       @id @default(autoincrement())
+  title       String
+  fileUrl     String
+  fileType    String?   // PDF, JPG, PNG, HEIC
+  ocrText     String?
+  projectId   Int
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phaseId     Int?
+  phase       Phase?    @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+}
+
+model Material {
+  id          Int       @id @default(autoincrement())
+  name        String    // npr. "Beton MB30"
+  unit        String    @default("kom") // m3, kom, kg, m2
+  category    String?
+  description String?
+  priceEst    Float     @default(0.0)
+  projectId   Int
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+}
+
+model Capital {
+  id          Int       @id @default(autoincrement())
+  sourceName  String    // "Ušteđevina", "Kredit banke"
   amount      Float
-  paidDate    DateTime @default(now())
-  invoiceUrl  String?  // Link ka računu ili slici otpremnice
-  phaseId     Int
-  phase       Phase    @relation(fields: [phaseId], references: [id], onDelete: Cascade)
-  vendorId    Int?
-  vendor      Vendor?  @relation(fields: [vendorId], references: [id], onDelete: SetNull)
-  createdAt   DateTime @default(now())
+  category    String    // Ušteđevina, Kredit, Pozajmica
+  date        DateTime  @default(now())
+  note        String?
+  projectId   Int
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+}
+
+model Reminder {
+  id          Int       @id @default(autoincrement())
+  title       String
+  dueDate     DateTime
+  priority    String    @default("Srednje") // Nisko, Srednje, Visoko
+  category    String    @default("Opšte")
+  isDone      Boolean   @default(false)
+  note        String?
+  projectId   Int
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phaseId     Int?
+  phase       Phase?    @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+  companyId   Int?
+  company     Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
 }

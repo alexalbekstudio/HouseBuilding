@@ -3,9 +3,9 @@
   "short_name": "HouseBuilding",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f1f5f9",
+  "background_color": "#0f172a",
   "theme_color": "#0f172a",
-  "description": "Evidencija budžeta, faza i računa izgradnje kuće",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>",

@@ -2,20 +2,27 @@ import prisma from '../config/db.js';
 
 export const getAllPhases = async (req, res) => {
   try {
+    const projectId = parseInt(req.query.projectId || '1');
+
     const phases = await prisma.phase.findMany({
+      where: { projectId },
       orderBy: { orderIndex: 'asc' },
       include: {
-        expenses: true,
-      },
+        expenses: {
+          include: { company: true }
+        },
+        documents: true,
+        reminders: true
+      }
     });
 
-    // Dodavanje izračunatog stvarnog troška po fazi
-    const summary = phases.map(phase => {
+    const summary = phases.map((phase) => {
       const totalSpent = phase.expenses.reduce((acc, curr) => acc + curr.amount, 0);
       return {
         ...phase,
         totalSpent,
-        remainingBudget: phase.budget - totalSpent,
+        remainingBudget: phase.budgetPlan - totalSpent,
+        documentsCount: phase.documents.length
       };
     });
 
@@ -25,44 +32,23 @@ export const getAllPhases = async (req, res) => {
   }
 };
 
-export const createPhase = async (req, res) => {
-  try {
-    const { title, description, orderIndex, budget, status, startDate, endDate } = req.body;
-    const phase = await prisma.phase.create({
-      data: {
-        title,
-        description,
-        orderIndex: orderIndex ? parseInt(orderIndex) : 0,
-        budget: budget ? parseFloat(budget) : 0.0,
-        status: status || 'PLANIRANO',
-        startDate: startDate ? new Date(startDate) : null,
-        endDate: endDate ? new Date(endDate) : null,
-      },
-    });
-    res.status(201).json(phase);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
-
-export const updatePhase = async (req, res) => {
+export const updatePhaseStatus = async (req, res) => {
   try {
     const { id } = req.params;
+    const { status, budgetPlan, startDate, endDate } = req.body;
+
+    const data = {};
+    if (status) data.status = status;
+    if (budgetPlan !== undefined) data.budgetPlan = parseFloat(budgetPlan);
+    if (startDate !== undefined) data.startDate = startDate ? new Date(startDate) : null;
+    if (endDate !== undefined) data.endDate = endDate ? new Date(endDate) : null;
+
     const updated = await prisma.phase.update({
       where: { id: parseInt(id) },
-      data: req.body,
+      data
     });
-    res.json(updated);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
 
-export const deletePhase = async (req, res) => {
-  try {
-    const { id } = req.params;
-    await prisma.phase.delete({ where: { id: parseInt(id) } });
-    res.status(204).send();
+    res.json(updated);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
