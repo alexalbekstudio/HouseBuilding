@@ -26,4 +26,4 @@ EXPOSE 3000
 ENV NODE_ENV=production
 
 # Pokretanje Prisma migracija i startovanje aplikacije
-CMD ["sh", "-c", "npx prisma migrate deploy && node app.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node src/app.js"]
